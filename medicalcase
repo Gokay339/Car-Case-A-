@@ -1,0 +1,107 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression, Ridge , Lasso , ElasticNet
+
+from sklearn.metrics import mean_squared_error, r2_score , mean_absolute_error
+
+
+from google.colab import files
+data = files.upload()
+
+data = pd.read_csv('insurance.csv')
+data.head()
+
+data.describe()
+
+data.isnull().sum()              #EKSİK VERİ VAR MI DİYE KONTROL ETTİK
+
+age_statistic =data["age"].value_counts()
+sex_statistic =data["sex"].value_counts()
+bmi_statistic =data["bmi"].value_counts()
+children_statistic =data["children"].value_counts()       #DATANIN İÇİNDEKİ DEĞERLERİ SAYIYOR KAÇ TEKRAR VAR
+smoker_statistic =data["smoker"].value_counts()
+region_statistic =data["region"].value_counts()
+
+print("Yaş sütunundaki değerlerin kaç defa tekrarlandı :",age_statistic)
+print("Yaş sütunundaki değerlerin kaç defa tekrarlandı :",sex_statistic)
+print("Yaş sütunundaki değerlerin kaç defa tekrarlandı :",bmi_statistic)
+print("Yaş sütunundaki değerlerin kaç defa tekrarlandı :",children_statistic)
+print("Yaş sütunundaki değerlerin kaç defa tekrarlandı :",smoker_statistic)
+print("Yaş sütunundaki değerlerin kaç defa tekrarlandı :",region_statistic)
+
+sex_types = pd.get_dummies(data.sex, prefix="sex")
+smoker_types = pd.get_dummies(data.smoker, prefix="smoker")
+region_types = pd.get_dummies(data.region, prefix="region")
+
+data=pd.concat([data, sex_types, smoker_types, region_types], axis=1)
+
+data.head()
+
+data.drop(["sex","region","smoker","sex_female","smoker_no"],axis=1 , inplace=True)         #DATALARI SİLME 
+data.head()
+
+y= data["charges"]
+data.drop(["charges"], axis=1, inplace=True)
+x = data
+
+x_train, x_test, y_train, y_test = train_test_split(x, y,test_size=0.25, random_state=46)
+scaler = StandardScaler()
+x_train = scaler.fit_transform(x_train)
+x_test = scaler.fit_transform(x_test)
+
+# 4.1 - KARAR AGACI REGRESYON ALGORITMASI
+tree_regression = DecisionTreeRegressor(random_state=42, max_depth=2)
+tree_regression = tree_regression.fit(x_train, y_train)
+tahmin_tree_regression = tree_regression.predict(x_test)
+
+# 4.2 - RANDOM FORREST REGRESYON ALGORITMASI
+random_regression = RandomForestRegressor(max_depth=4, random_state=42)
+random_regression.fit(x_train, y_train)
+tahmin_random_regression = random_regression.predict(x_test)
+
+# 4.3 - LASSO REGRESYON ALGORITMASI
+lassoReg = Lasso(alpha=2)
+lassoReg.fit(x_train,y_train)
+tahmin_lasso = lassoReg.predict(x_test)
+
+# 4.4 - Elastic REGRESYON ALGORITMASI
+elastic_reg = ElasticNet(random_state=0)
+elastic_reg.fit(x_train, y_train)
+tahmin_elastic = elastic_reg.predict(x_test)
+
+# 4.5 RIDGE REGRESYON ALGORITMASI
+ridge_reg = Ridge()
+ridge_reg.fit(x_train, y_train)
+tahmin_ridge = ridge_reg.predict(x_test)
+
+# SONUCLARI HESAPLAMA FONKSIYONU
+def performance_calculate(predict):
+  mae = mean_absolute_error(y_test, predict)
+  mse = mean_squared_error(y_test, predict)
+  rmse = np.sqrt(mse) # or mse**(0.5)
+  r2 = r2_score(y_test, predict)
+
+  data = [mae, mse, rmse, r2]
+  return data
+
+predicts =[tahmin_tree_regression,tahmin_random_regression,tahmin_lasso,tahmin_elastic,tahmin_ridge]
+algoritma_names = ["Karar Ağacı Regresyon", "Random Forrest regresyon","Lasso Regresyon", "Elastic Regresyon", "Ridge Regresyon"]
+
+# EKRANA YAZDIRMAK
+seriler = []
+metrics = ["Mean Absolute Error (MAE)", "Mean Squared Error (MSE)","Root Mean Squared Error (RMSE)" , "R2"]
+for i in predicts:
+  data = performance_calculate(i)
+  seriler.append(data)
+
+
+df = pd.DataFrame(data = seriler, index = algoritma_names, columns =metrics)
+pd.set_option('display.colheader_justify', 'center') # kolon isimlerini ortaliyoruz
+print(df.to_string())
